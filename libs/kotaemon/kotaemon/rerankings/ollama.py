@@ -12,7 +12,7 @@ from .base import BaseReranking
 
 class OllamaReranking(BaseReranking):
     """Ollama Reranking model using OpenAI-compatible API
-    
+
     This class provides reranking functionality using Ollama's OpenAI-compatible API.
     It works by using a language model to score the relevance of documents to a query.
     """
@@ -45,6 +45,9 @@ class OllamaReranking(BaseReranking):
         help="Request timeout in seconds",
     )
 
+    # ✅ 显式声明非参数化字段
+    session: Optional[requests.Session] = None
+
     def __init__(self, **kwargs):
         super().__init__(**kwargs)
         self.session = requests.Session()
@@ -61,8 +64,7 @@ class OllamaReranking(BaseReranking):
 
     def _score_relevance(self, query: str, document: str) -> float:
         """Score the relevance of a document to a query using Ollama model"""
-        
-        # Create a prompt for relevance scoring
+
         prompt = f"""Given the following query and document, rate the relevance of the document to the query on a scale from 0.0 to 1.0, where 0.0 means completely irrelevant and 1.0 means perfectly relevant.
 
 Query: {query}
@@ -73,14 +75,9 @@ Please respond with only a single number between 0.0 and 1.0 representing the re
 
         payload = {
             "model": self.model,
-            "messages": [
-                {
-                    "role": "user",
-                    "content": prompt
-                }
-            ],
+            "messages": [{"role": "user", "content": prompt}],
             "temperature": self.temperature,
-            "max_tokens": 10,  # We only need a short numeric response
+            "max_tokens": 10,
         }
 
         try:
@@ -90,29 +87,22 @@ Please respond with only a single number between 0.0 and 1.0 representing the re
                 timeout=self.timeout
             )
             response.raise_for_status()
-            
+
             result = response.json()
             content = result["choices"][0]["message"]["content"].strip()
-            
-            # Extract numeric score from response
+
             try:
                 score = float(content)
-                # Ensure score is between 0.0 and 1.0
                 return max(0.0, min(1.0, score))
             except ValueError:
-                # If we can't parse the score, try to extract a number
                 import re
                 numbers = re.findall(r'0?\.\d+|[01]\.?\d*', content)
                 if numbers:
                     score = float(numbers[0])
                     return max(0.0, min(1.0, score))
-                else:
-                    # Default to 0.5 if we can't parse
-                    return 0.5
-                    
+                return 0.5
         except Exception as e:
             print(f"Error scoring relevance with Ollama: {e}")
-            # Return default score on error
             return 0.5
 
     def run(self, query: str, documents: list[Document]) -> list[Document]:
@@ -120,16 +110,10 @@ Please respond with only a single number between 0.0 and 1.0 representing the re
         if not documents:
             return documents
 
-        # Score each document
         scored_docs = []
         for doc in documents:
-            # Truncate document text if needed
             doc_text = self._truncate_text(doc.text)
-            
-            # Get relevance score
             score = self._score_relevance(query, doc_text)
-            
-            # Create new document with score
             scored_doc = Document(
                 text=doc.text,
                 metadata={
@@ -139,10 +123,7 @@ Please respond with only a single number between 0.0 and 1.0 representing the re
             )
             scored_docs.append((score, scored_doc))
 
-        # Sort by score (descending)
         scored_docs.sort(key=lambda x: x[0], reverse=True)
-        
-        # Return sorted documents
         return [doc for _, doc in scored_docs]
 
     def __repr__(self):
