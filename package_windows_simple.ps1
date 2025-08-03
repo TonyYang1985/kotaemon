@@ -30,7 +30,8 @@ $requiredFiles = @(
     ".env.example",
     "pyproject.toml",
     "scripts",
-    "libs\ktem\ktem\assets"
+    "libs\ktem",
+    "libs\kotaemon"
 )
 
 # Check for required files
@@ -185,10 +186,12 @@ IF NOT EXIST "%conda_root%\condabin\conda.bat" (
 }
 
 # Create libs directory structure and copy assets
-$libsPath = Join-Path $packagePath "libs\ktem\ktem"
+$libsPath = Join-Path $packagePath "libs"
 New-Item -ItemType Directory -Path $libsPath -Force | Out-Null
-Copy-Item -Path "libs\ktem\ktem\assets" -Destination $libsPath -Recurse -Force
-Write-Host "  + libs/ktem/ktem/assets/" -ForegroundColor Green
+Copy-Item -Path "libs\ktem" -Destination $libsPath -Recurse -Force
+Copy-Item -Path "libs\kotaemon" -Destination $libsPath -Recurse -Force
+Write-Host "  + libs/ktem/" -ForegroundColor Green
+Write-Host "  + libs/kotaemon/" -ForegroundColor Green
 
 # Show package contents
 Write-Host ""

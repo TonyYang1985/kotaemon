@@ -1,4 +1,4 @@
-@ECHO off
+@ECHO off 
 
 :: Main script execution
 CD /D "%~dp0\.."
@@ -43,6 +43,24 @@ IF ERRORLEVEL 1 GOTO :end
 CALL :print_highlight "Creating conda environment"
 CALL :create_conda_environment
 IF ERRORLEVEL 1 GOTO :end
+
+:: Fix conda condabin directory if missing
+IF NOT EXIST "%conda_root%\condabin" (
+    ECHO Creating missing condabin directory...
+    mkdir "%conda_root%\condabin" 2>nul
+)
+
+:: Copy conda.bat to condabin if missing
+IF NOT EXIST "%conda_root%\condabin\conda.bat" (
+    ECHO Copying conda.bat to condabin directory...
+    FOR /D %%d IN ("%conda_root%\pkgs\conda-*") DO (
+        IF EXIST "%%d\condabin\conda.bat" (
+            copy "%%d\condabin\conda.bat" "%conda_root%\condabin\" >nul 2>&1
+            IF NOT ERRORLEVEL 1 GOTO :condabin_fixed
+        )
+    )
+)
+:condabin_fixed
 
 CALL :activate_environment
 IF ERRORLEVEL 1 GOTO :end
@@ -214,9 +232,9 @@ IF %ERRORLEVEL% == 0  (
     ) ELSE (
         ECHO Installing Kotaemon %app_version%
         @REM Work around for versioning control
-        python -m pip install git@gitee.com:yangxiangjiang/kotaemon.git@"%v0.11.0%"#subdirectory=libs/kotaemon
-        python -m pip install git@gitee.com:yangxiangjiang/kotaemon.git@"%v0.11.0%"#subdirectory=libs/ktem
-        python -m pip install --no-deps git@gitee.com:yangxiangjiang/kotaemon.git@"%v0.11.0%"
+        python -m pip install git+https://gitee.com/yangxiangjiang/kotaemon.git@"%app_version%"#subdirectory=libs/kotaemon
+        python -m pip install git+https://gitee.com/yangxiangjiang/kotaemon.git@"%app_version%"#subdirectory=libs/ktem
+        python -m pip install --no-deps git+https://gitee.com/yangxiangjiang/kotaemon.git@"%app_version%"
     )
 
     ( CALL pip list | findstr /C:"kotaemon" >NUL 2>&1 ) || (
@@ -224,6 +242,8 @@ IF %ERRORLEVEL% == 0  (
         CALL :deactivate_environment
         GOTO :exit_func_with_error
     )
+
+    python -m pip install --no-deps -e .
 
     CALL :print_highlight "Install successfully. Clear cache..."
     "%conda_root%\condabin\conda.bat" clean --all -y
@@ -274,6 +294,8 @@ GOTO :eof
 :: Workaround for diskcache path with folder start with .
 SET THEFLOW_TEMP_PATH=flow_tmp
 SET PDFJS_PREBUILT_DIR=%target_pdf_js_dir%
+:: Add both source libs and build libs to PYTHONPATH to ensure all modules are found
+SET PYTHONPATH=%CD%\libs\ktem;%CD%\libs\kotaemon;%CD%\libs;%CD%;%PYTHONPATH%
 ECHO Starting Kotaemon UI... (prebuilt PDF.js is at %PDFJS_PREBUILT_DIR%)
 CALL python -Xutf8 "%CD%\app.py" || ( ECHO. && ECHO Will exit now... && GOTO :exit_func_with_error )
 GOTO :eof
