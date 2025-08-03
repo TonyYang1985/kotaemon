@@ -18,8 +18,8 @@ dynamic = ["version"]
 requires-python = ">= 3.10"
 description = "Kotaemon App"
 dependencies = [
-    "kotaemon @ git+https://github.com/Cinnamon/kotaemon.git@main#subdirectory=libs/kotaemon",
-    "ktem @ git+https://github.com/Cinnamon/kotaemon.git@main#subdirectory=libs/ktem"
+    "kotaemon @ git+https://gitee.com/yangxiangjiang/kotaemon.git@main#subdirectory=libs/kotaemon",
+    "ktem @ git+https://gitee.com/yangxiangjiang/kotaemon.git@main#subdirectory=libs/ktem"
 ]
 authors = [
     { name = "@trducng", email = "john@cinnamon.is" },

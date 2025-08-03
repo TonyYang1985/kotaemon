@@ -181,7 +181,7 @@ def start_project(template):
 
     print("Retrieving template...")
     os.system(
-        "cookiecutter git@github.com:Cinnamon/kotaemon.git "
+        "cookiecutter git@gitee.com:yangxiangjiang/kotaemon.git"
         f"--directory='templates/{template}'"
     )
 

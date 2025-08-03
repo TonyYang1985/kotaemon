@@ -28,6 +28,7 @@ $requiredFiles = @(
     "flowsettings.py", 
     "app.py",
     ".env.example",
+    "pyproject.toml",
     "scripts",
     "libs\ktem\ktem\assets"
 )
@@ -119,6 +120,10 @@ Write-Host "  + flowsettings.py" -ForegroundColor Green
 Copy-Item -Path "app.py" -Destination $packagePath -Force
 Write-Host "  + app.py" -ForegroundColor Green
 
+# Copy pyproject.toml
+Copy-Item -Path "pyproject.toml" -Destination $packagePath -Force
+Write-Host "  + pyproject.toml" -ForegroundColor Green
+
 # Copy .env.example as .env
 Copy-Item -Path ".env.example" -Destination (Join-Path $packagePath ".env") -Force
 Write-Host "  + .env.example -> .env" -ForegroundColor Green
@@ -132,20 +137,19 @@ Write-Host "  + Patching run_windows.bat for v0.11.0+ dependencies" -ForegroundC
 $runWindowsPath = Join-Path $packagePath "scripts\run_windows.bat"
 if (Test-Path $runWindowsPath) {
     $content = Get-Content $runWindowsPath -Raw
-    # Replace all GitHub installation patterns with local installation
-    # Replace the main kotaemon installation
-    $searchPattern1 = 'python -m pip install git@github.com:TonyYang1985/kotaemon-0.11.0.git@"%develop%"#subdirectory=libs/kotaemon'
-    $searchPattern2 = 'python -m pip install git@github.com:TonyYang1985/kotaemon-0.11.0.git@"%develop%"#subdirectory=libs/ktem'
-    $searchPattern3 = 'python -m pip install --no-deps git@github.com:TonyYang1985/kotaemon-0.11.0.git@"%develop%"'
+    # Replace the actual GitHub installation patterns with local installation
+    # These are the actual patterns in the run_windows.bat file
+    $searchPattern1 = 'python -m pip install git@gitee.com:yangxiangjiang/kotaemon.git@"%app_version%"#subdirectory=libs/kotaemon'
+    $searchPattern2 = 'python -m pip install git@gitee.com:yangxiangjiang/kotaemon.git@"%app_version%"#subdirectory=libs/ktem'
+    $searchPattern3 = 'python -m pip install --no-deps git@gitee.com:yangxiangjiang/kotaemon.git@"%app_version%"'
     
-    # $searchPattern1 = 'python -m pip install -e ./libs/kotaemon'
-    # $searchPattern2 = 'python -m pip install -e ./libs/ktem'
-    # $searchPattern3 = 'python -m pip install --no-deps -e .'
-
     # Replace with local installation commands
-    $newContent = $content -replace [regex]::Escape($searchPattern1), 'ECHO Installing kotaemon from local libs/kotaemon...`r`n        python -m pip install -e "./libs/kotaemon"'
-    $newContent = $newContent -replace [regex]::Escape($searchPattern2), 'ECHO Installing ktem from local libs/ktem...`r`n        python -m pip install -e "./libs/ktem"'
-    $newContent = $newContent -replace [regex]::Escape($searchPattern3), 'ECHO Installing kotaemon app from local source...`r`n        python -m pip install --no-deps -e "."'
+    $newContent = $content -replace [regex]::Escape($searchPattern1), 'ECHO Installing kotaemon from local libs/kotaemon...
+        python -m pip install -e ".\libs\kotaemon"'
+    $newContent = $newContent -replace [regex]::Escape($searchPattern2), 'ECHO Installing ktem from local libs/ktem...
+        python -m pip install -e ".\libs\ktem"'
+    $newContent = $newContent -replace [regex]::Escape($searchPattern3), 'ECHO Installing kotaemon app from local source...
+        python -m pip install --no-deps -e "."'
     # Add conda environment setup fix - ensure condabin directory is created
     # This addresses the issue where conda installation doesn't create condabin directory
     $condabinSetup = @'
@@ -158,17 +162,15 @@ IF NOT EXIST "%conda_root%\condabin" (
 
 :: Copy conda.bat to condabin if missing
 IF NOT EXIST "%conda_root%\condabin\conda.bat" (
-    IF EXIST "%conda_root%\pkgs\conda-*\condabin\conda.bat" (
-        ECHO Copying conda.bat to condabin directory...
-        FOR /D %%d IN ("%conda_root%\pkgs\conda-*") DO (
-            IF EXIST "%%d\condabin\conda.bat" (
-                copy "%%d\condabin\conda.bat" "%conda_root%\condabin\" >nul 2>&1
-                GOTO :condabin_fixed
-            )
+    ECHO Copying conda.bat to condabin directory...
+    FOR /D %%d IN ("%conda_root%\pkgs\conda-*") DO (
+        IF EXIST "%%d\condabin\conda.bat" (
+            copy "%%d\condabin\conda.bat" "%conda_root%\condabin\" >nul 2>&1
+            IF NOT ERRORLEVEL 1 GOTO :condabin_fixed
         )
-        :condabin_fixed
     )
 )
+:condabin_fixed
 
 '@
     # Insert the condabin fix right before the activate_environment function
